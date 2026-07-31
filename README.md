@@ -112,7 +112,7 @@ Press `Ctrl+C` to stop it.
 ## 4. Download this repository
 
 ```bash
-git clone <YOUR_REPOSITORY_URL>.git
+git clone https://github.com/SparkyAutomation/Jetson-Orin-Nano-ROS-2-setup-package.git
 cd jetson-orin-nano-ros2-setup
 chmod +x install_jetson_ros2.sh verify_install.py
 ```
