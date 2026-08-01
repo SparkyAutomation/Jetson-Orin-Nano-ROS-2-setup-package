@@ -111,7 +111,9 @@ done
 
 [[ ${EUID} -ne 0 ]] || fail "Run this script as a normal user, not as root."
 command -v sudo >/dev/null 2>&1 || fail "sudo is required."
-command -v curl >/dev/null 2>&1 || true
+# Require curl and python3 since the script depends on them
+command -v curl >/dev/null 2>&1 || fail "curl is required."
+command -v python3 >/dev/null 2>&1 || fail "python3 is required."
 
 source /etc/os-release
 [[ "${ID:-}" == "ubuntu" ]] || fail "Ubuntu is required. Detected: ${ID:-unknown}."
@@ -217,10 +219,10 @@ fi
 rosdep update
 
 log "Creating ROS 2 workspace"
-mkdir -p "${WORKSPACE}/src"
+mkdir -p "${WORKSPACE}/src" || fail "Could not create workspace directory: ${WORKSPACE}/src"
 
 log "Creating Python virtual environment"
-mkdir -p "$(dirname "$VENV_DIR")"
+mkdir -p "$(dirname "$VENV_DIR")" || fail "Could not create venv parent directory: $(dirname "$VENV_DIR")"
 python3 -m venv --system-site-packages "$VENV_DIR"
 "${VENV_DIR}/bin/python" -m pip install --upgrade pip setuptools wheel
 
@@ -283,7 +285,7 @@ log "Building the initial workspace"
 source "/opt/ros/${ROS_DISTRO}/setup.bash"
 # shellcheck disable=SC1090
 source "${VENV_DIR}/bin/activate"
-cd "$WORKSPACE"
+cd "$WORKSPACE" || fail "Could not change directory to ${WORKSPACE}"
 colcon build --symlink-install
 
 if [[ "$MAX_PERFORMANCE" -eq 1 ]]; then
