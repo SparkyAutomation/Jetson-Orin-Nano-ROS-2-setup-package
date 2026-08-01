@@ -152,7 +152,7 @@ if [[ "$SYSTEM_UPGRADE" -eq 1 ]]; then
   sudo DEBIAN_FRONTEND=noninteractive apt-get full-upgrade -y
 fi
 
-log "Installing the JetPack development stack and system tools"
+log "Installing the JetPack development stack and system tools (including TigerVNC)"
 sudo apt-get update
 sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \
   nvidia-jetpack \
@@ -161,6 +161,7 @@ sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \
   libopenblas-dev libjpeg-dev libpng-dev libavcodec-dev libavformat-dev \
   libswscale-dev libgtk-3-dev \
   ffmpeg v4l-utils usbutils can-utils net-tools \
+  tigervnc-standalone-server tigervnc-viewer \
   htop tmux nano vim
 
 git lfs install --skip-repo >/dev/null 2>&1 || true
@@ -173,11 +174,11 @@ for device_group in dialout video render i2c gpio; do
 done
 
 log "Configuring the official ROS 2 apt repository"
-ROS_APT_SOURCE_VERSION="$(
+ROS_APT_SOURCE_VERSION="$([
   curl -fsSL https://api.github.com/repos/ros-infrastructure/ros-apt-source/releases/latest \
     | awk -F'"' '/tag_name/ {print $4; exit}'
 )"
-[[ -n "$ROS_APT_SOURCE_VERSION" ]] || fail "Could not determine the ros2-apt-source release version."
+[[ -n "${ROS_APT_SOURCE_VERSION}" ]] || fail "Could not determine the ros2-apt-source release version."
 
 ROS_APT_DEB="/tmp/ros2-apt-source.deb"
 curl -fsSL -o "$ROS_APT_DEB" \
