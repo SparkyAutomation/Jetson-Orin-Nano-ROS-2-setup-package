@@ -142,10 +142,29 @@ sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \
   libopenblas-dev libjpeg-dev libpng-dev libavcodec-dev libavformat-dev \
   libswscale-dev libgtk-3-dev \
   ffmpeg v4l-utils usbutils can-utils net-tools \
-  tigervnc-standalone-server tigervnc-viewer \
   htop tmux nano vim
 
 git lfs install --skip-repo >/dev/null 2>&1 || true
+
+log "Installing RustDesk remote desktop"
+RUSTDESK_RELEASE_JSON="$(curl -fsSL https://api.github.com/repos/rustdesk/rustdesk/releases/latest)"
+RUSTDESK_VERSION="$(printf '%s\n' "$RUSTDESK_RELEASE_JSON" | awk -F'"' '/"tag_name"/ {print $4; exit}')"
+RUSTDESK_DEB_URL="$(printf '%s\n' "$RUSTDESK_RELEASE_JSON" | awk -F'"' '/"browser_download_url"/ && /aarch64[.]deb/ {print $4; exit}')"
+
+[[ -n "$RUSTDESK_VERSION" ]] || fail "Could not determine the latest RustDesk version."
+[[ -n "$RUSTDESK_DEB_URL" ]] || fail "Could not find the RustDesk ARM64 Debian package."
+
+RUSTDESK_DEB="/tmp/rustdesk-${RUSTDESK_VERSION}-aarch64.deb"
+curl -fL --retry 3 --retry-delay 2 --connect-timeout 20 \
+  -o "$RUSTDESK_DEB" "$RUSTDESK_DEB_URL"
+[[ -s "$RUSTDESK_DEB" ]] || fail "The downloaded RustDesk package is empty."
+
+sudo DEBIAN_FRONTEND=noninteractive apt-get install -y "$RUSTDESK_DEB"
+rm -f "$RUSTDESK_DEB"
+
+sudo systemctl enable --now rustdesk.service
+systemctl is-active --quiet rustdesk.service || fail "RustDesk service did not start successfully."
+log "RustDesk ${RUSTDESK_VERSION} installed and running"
 
 log "Adding the current user to robotics device groups"
 for device_group in dialout video render i2c gpio; do
@@ -393,6 +412,10 @@ Workspace:
 
 Python environment:
   ${VENV_DIR}
+
+Remote desktop:
+  RustDesk ${RUSTDESK_VERSION}
+  Service status: systemctl status rustdesk --no-pager
 
 A reboot is recommended:
   sudo reboot
