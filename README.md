@@ -113,7 +113,7 @@ Press `Ctrl+C` to stop it.
 
 ```bash
 git clone https://github.com/SparkyAutomation/Jetson-Orin-Nano-ROS-2-setup-package.git
-cd jetson-orin-nano-ros2-setup
+cd Jetson-Orin-Nano-ROS-2-setup-package
 chmod +x install_jetson_ros2.sh verify_install.py
 ```
 
