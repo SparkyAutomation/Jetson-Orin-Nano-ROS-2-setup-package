@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-"""Verify ROS 2, OpenCV, PyTorch CUDA, and Ultralytics on a Jetson."""
+"""Verify ROS 2, OpenCV, PyTorch CUDA, Ultralytics, and TigerVNC on a Jetson."""
 
 from __future__ import annotations
 
 import importlib
 import platform
 import sys
+import shutil
 from dataclasses import dataclass
 
 
@@ -84,6 +85,25 @@ def main() -> int:
         checks.append(Check("ROS 2 rclpy", True, "node initialization succeeded"))
     except Exception as exc:  # noqa: BLE001
         checks.append(Check("ROS 2 rclpy", False, repr(exc)))
+
+    # TigerVNC checks: look for the vncserver (server) and vncviewer (viewer) executables
+    try:
+        server_path = shutil.which("vncserver") or shutil.which("tigervncserver")
+        if server_path:
+            checks.append(Check("TigerVNC server", True, server_path))
+        else:
+            checks.append(Check("TigerVNC server", False, "vncserver not found"))
+    except Exception as exc:  # noqa: BLE001
+        checks.append(Check("TigerVNC server", False, repr(exc)))
+
+    try:
+        viewer_path = shutil.which("vncviewer") or shutil.which("tigervnc-viewer")
+        if viewer_path:
+            checks.append(Check("TigerVNC viewer", True, viewer_path))
+        else:
+            checks.append(Check("TigerVNC viewer", False, "vncviewer not found"))
+    except Exception as exc:  # noqa: BLE001
+        checks.append(Check("TigerVNC viewer", False, repr(exc)))
 
     print("Jetson robotics stack verification")
     print(f"Python: {sys.version.split()[0]}")
