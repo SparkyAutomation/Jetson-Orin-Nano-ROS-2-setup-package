@@ -1,15 +1,13 @@
 #!/usr/bin/env bash
 # Jetson Orin Nano robotics workstation installer
 # Target: NVIDIA JetPack 7.2 / Ubuntu 24.04 / ROS 2 Jazzy / Python 3.12
-
-# This installer requires Bash. Do not run it with:
-#   sh install_jetson_ros2.sh
 #
-# Run it with:
-#   bash install_jetson_ros2.sh
-# or:
+# Run with:
 #   chmod +x install_jetson_ros2.sh
 #   ./install_jetson_ros2.sh
+#
+# Do not run with:
+#   sh install_jetson_ros2.sh
 
 if [[ -z "${BASH_VERSION:-}" ]]; then
   printf '%s\n' "Error: this installer must be run with Bash." >&2
@@ -36,6 +34,10 @@ TORCHVISION_VERSION="0.28.0+cu130"
 ULTRALYTICS_VERSION="8.4.112"
 NUMPY_VERSION="1.26.4"
 ONNXRUNTIME_VERSION="1.18.0"
+
+PIP_VERSION_CONSTRAINT="<27"
+SETUPTOOLS_VERSION_CONSTRAINT=">=68,<80"
+WHEEL_VERSION_CONSTRAINT="<1"
 
 log() {
   printf '\n\033[1;34m[jetson-setup]\033[0m %s\n' "$*"
@@ -168,7 +170,7 @@ source /etc/os-release
   "Ubuntu is required. Detected: ${ID:-unknown}."
 
 [[ "${VERSION_ID:-}" == "24.04" ]] || fail \
-  "This installer targets Ubuntu 24.04 / JetPack 7.2. Detected Ubuntu ${VERSION_ID:-unknown}."
+  "This installer targets Ubuntu 24.04. Detected Ubuntu ${VERSION_ID:-unknown}."
 
 [[ "$(uname -m)" == "aarch64" ]] || fail \
   "ARM64/aarch64 is required. Detected: $(uname -m)."
@@ -181,6 +183,8 @@ if [[ "${SKIP_HARDWARE_CHECK}" -eq 0 ]]; then
   fi
 fi
 
+CURRENT_USER="${SUDO_USER:-${USER:-$(id -un)}}"
+
 log "Configuration"
 
 printf '  Ubuntu:       %s\n' "${PRETTY_NAME:-unknown}"
@@ -188,7 +192,7 @@ printf '  Architecture: %s\n' "$(uname -m)"
 printf '  ROS distro:   %s\n' "${ROS_DISTRO}"
 printf '  Workspace:    %s\n' "${WORKSPACE}"
 printf '  Python venv:  %s\n' "${VENV_DIR}"
-printf '  User:         %s\n' "${USER:-$(id -un)}"
+printf '  User:         %s\n' "${CURRENT_USER}"
 
 log "Acquiring sudo credentials"
 
@@ -223,7 +227,7 @@ if [[ "${SYSTEM_UPGRADE}" -eq 1 ]]; then
     apt-get full-upgrade -y
 fi
 
-log "Installing the JetPack development stack and system tools"
+log "Installing JetPack development tools and system packages"
 
 sudo apt-get update
 
@@ -261,9 +265,7 @@ sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \
 
 git lfs install --skip-repo >/dev/null 2>&1 || true
 
-log "Adding the current user to common robotics device groups"
-
-CURRENT_USER="${SUDO_USER:-${USER:-$(id -un)}}"
+log "Adding the current user to robotics device groups"
 
 for device_group in dialout video render i2c gpio; do
   if getent group "${device_group}" >/dev/null 2>&1; then
@@ -290,8 +292,6 @@ ROS_APT_SOURCE_VERSION="$(
 ROS_APT_DEB="/tmp/ros2-apt-source.deb"
 
 ROS_APT_URL="https://github.com/ros-infrastructure/ros-apt-source/releases/download/${ROS_APT_SOURCE_VERSION}/ros2-apt-source_${ROS_APT_SOURCE_VERSION}.${VERSION_CODENAME}_all.deb"
-
-log "Downloading ROS apt-source package"
 
 printf '  Version: %s\n' "${ROS_APT_SOURCE_VERSION}"
 printf '  URL:     %s\n' "${ROS_APT_URL}"
@@ -362,7 +362,7 @@ log "Creating Python virtual environment"
 VENV_PARENT="$(dirname "${VENV_DIR}")"
 
 mkdir -p "${VENV_PARENT}" || fail \
-  "Could not create venv parent directory: ${VENV_PARENT}"
+  "Could not create virtual environment parent directory: ${VENV_PARENT}"
 
 if [[ ! -x "${VENV_DIR}/bin/python" ]]; then
   python3 -m venv \
@@ -372,11 +372,37 @@ else
   log "Existing Python virtual environment detected"
 fi
 
+log "Installing compatible Python packaging tools"
+
 "${VENV_DIR}/bin/python" -m pip install \
   --upgrade \
-  pip \
-  setuptools \
-  wheel
+  "pip${PIP_VERSION_CONSTRAINT}" \
+  "setuptools${SETUPTOOLS_VERSION_CONSTRAINT}" \
+  "wheel${WHEEL_VERSION_CONSTRAINT}"
+
+SETUPTOOLS_MAJOR="$(
+  "${VENV_DIR}/bin/python" - <<'PY'
+import setuptools
+print(setuptools.__version__.split(".", 1)[0])
+PY
+)"
+
+if (( SETUPTOOLS_MAJOR >= 80 )); then
+  fail \
+    "Incompatible setuptools version detected. colcon-core requires setuptools below version 80."
+fi
+
+log "Python packaging tool versions"
+
+"${VENV_DIR}/bin/python" - <<'PY'
+import pip
+import setuptools
+import wheel
+
+print(f"pip:        {pip.__version__}")
+print(f"setuptools: {setuptools.__version__}")
+print(f"wheel:      {wheel.__version__}")
+PY
 
 log "Installing CUDA-enabled PyTorch for ARM64"
 
@@ -406,14 +432,19 @@ log "Installing NumPy and robotics Python libraries"
   "onnxslim>=0.1.82,<1" \
   "onnxruntime>=${ONNXRUNTIME_VERSION},<2"
 
-# Install Ultralytics without dependencies so pip does not replace the
-# JetPack/Ubuntu OpenCV build with a generic opencv-python wheel.
-log "Installing Ultralytics YOLO while preserving system OpenCV"
+log "Installing Ultralytics while preserving system OpenCV"
 
 "${VENV_DIR}/bin/python" -m pip install \
   --no-cache-dir \
   --no-deps \
   "ultralytics==${ULTRALYTICS_VERSION}"
+
+log "Checking Python package dependencies"
+
+if ! "${VENV_DIR}/bin/python" -m pip check; then
+  fail \
+    "Python dependency conflicts were detected. Review the pip check output above."
+fi
 
 ENV_SCRIPT="${HOME}/jetson_ros2_env.sh"
 
@@ -488,6 +519,7 @@ import cv2
 import numpy as np
 import onnx
 import onnxruntime as ort
+import setuptools
 import torch
 import torchvision
 import ultralytics
@@ -500,6 +532,7 @@ print(f"TorchVision:           {torchvision.__version__}")
 print(f"ONNX:                   {onnx.__version__}")
 print(f"ONNX Runtime:           {ort.__version__}")
 print(f"Ultralytics:            {ultralytics.__version__}")
+print(f"setuptools:             {setuptools.__version__}")
 print(f"CUDA usable:            {torch.cuda.is_available()}")
 print(f"ONNX Runtime providers: {ort.get_available_providers()}")
 
@@ -513,7 +546,7 @@ if ! "${VENV_DIR}/bin/python" -c \
   'import torch; raise SystemExit(0 if torch.cuda.is_available() else 1)'
 then
   warn \
-    "PyTorch imported, but CUDA was not available. Reboot once and run the verification again."
+    "PyTorch imported, but CUDA was not available. Reboot once and run verification again."
 fi
 
 cat <<SUMMARY
@@ -524,7 +557,11 @@ Open a new terminal, or run:
 
   source "${ENV_SCRIPT}"
 
-Verify Python and CUDA:
+Check Python dependencies:
+
+  "${VENV_DIR}/bin/python" -m pip check
+
+Check PyTorch and CUDA:
 
   "${VENV_DIR}/bin/python" -c \
     "import torch; print(torch.__version__); print(torch.cuda.is_available())"
@@ -545,7 +582,6 @@ Python environment:
 
   ${VENV_DIR}
 
-Your user was added to available robotics device groups.
 A reboot is recommended before using serial, camera, GPIO, or GPU resources:
 
   sudo reboot
