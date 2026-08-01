@@ -120,7 +120,7 @@ chmod +x install_jetson_ros2.sh verify_install.py
 When using the files directly without a Git repository:
 
 ```bash
-cd jetson-orin-nano-ros2-setup
+cd Jetson-Orin-Nano-ROS-2-setup-package
 chmod +x install_jetson_ros2.sh verify_install.py
 ```
 
