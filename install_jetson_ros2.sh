@@ -19,6 +19,7 @@ TORCH_VERSION="2.13.0+cu130"
 TORCHVISION_VERSION="0.28.0+cu130"
 ULTRALYTICS_VERSION="8.4.112"
 NUMPY_VERSION="1.26.4"
+ONNXRUNTIME_VERSION="1.18.0"
 
 log() {
   printf '\n\033[1;34m[jetson-setup]\033[0m %s\n' "$*"
@@ -163,7 +164,7 @@ for device_group in dialout video render i2c gpio; do
 done
 
 log "Configuring the official ROS 2 apt repository"
-ROS_APT_SOURCE_VERSION="$(
+ROS_APT_SOURCE_VERSION="$([
   curl -fsSL https://api.github.com/repos/ros-infrastructure/ros-apt-source/releases/latest \
     | awk -F'"' '/tag_name/ {print $4; exit}'
 )"
@@ -237,7 +238,8 @@ log "Installing NumPy and robotics Python libraries"
   "nvidia-ml-py>=12,<14" \
   "ultralytics-thop>=2.1.2,<3" \
   "onnx>=1.18,<2" \
-  "onnxslim>=0.1.82,<1"
+  "onnxslim>=0.1.82,<1" \
+  "onnxruntime>=${ONNXRUNTIME_VERSION},<2"
 
 # Install Ultralytics without dependencies so pip does not replace the JetPack/Ubuntu
 # OpenCV build with a generic wheel. The required runtime dependencies are installed above.
@@ -291,14 +293,19 @@ import numpy as np
 import torch
 import torchvision
 from ultralytics import YOLO
+import onnxruntime as ort
 
 print(f"NumPy:       {np.__version__}")
 print(f"OpenCV:      {cv2.__version__}")
 print(f"PyTorch:     {torch.__version__}")
 print(f"TorchVision: {torchvision.__version__}")
+print(f"ONNX:        {__import__('onnx').__version__}")
+print(f"ONNX Runtime:{ort.__version__}")
 print(f"CUDA usable: {torch.cuda.is_available()}")
 if torch.cuda.is_available():
     print(f"CUDA device: {torch.cuda.get_device_name(0)}")
+# ONNX Runtime providers (e.g. CPUExecutionProvider, CUDAExecutionProvider, TRTExecutionProvider)
+print(f"ONNX Runtime providers: {ort.get_available_providers()}")
 print(f"Ultralytics: {__import__('ultralytics').__version__}")
 _ = YOLO
 PY
