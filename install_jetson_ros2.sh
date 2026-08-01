@@ -2,6 +2,13 @@
 # Jetson Orin Nano robotics workstation installer
 # Target: NVIDIA JetPack 7.2 / Ubuntu 24.04 / ROS 2 Jazzy / Python 3.12
 
+# Ensure the script always runs under bash. If invoked with sh/dash the [[ ... ]]
+# conditionals used in this script will fail with a "missing ]" parse error.
+# If BASH_VERSION is not set, re-exec the script under the user's bash.
+if [ -z "${BASH_VERSION:-}" ]; then
+  exec /usr/bin/env bash "$0" "$@"
+fi
+
 set -Eeuo pipefail
 IFS=$'\n\t'
 
@@ -164,10 +171,11 @@ for device_group in dialout video render i2c gpio; do
 done
 
 log "Configuring the official ROS 2 apt repository"
-ROS_APT_SOURCE_VERSION="$(
+ROS_APT_SOURCE_VERSION="$([
   curl -fsSL https://api.github.com/repos/ros-infrastructure/ros-apt-source/releases/latest \
     | awk -F'"' '/tag_name/ {print $4; exit}'
-)"
+]"
+)
 [[ -n "$ROS_APT_SOURCE_VERSION" ]] || fail "Could not determine the ros2-apt-source release version."
 
 ROS_APT_DEB="/tmp/ros2-apt-source.deb"
