@@ -171,11 +171,10 @@ for device_group in dialout video render i2c gpio; do
 done
 
 log "Configuring the official ROS 2 apt repository"
-ROS_APT_SOURCE_VERSION="$([
+ROS_APT_SOURCE_VERSION="$(
   curl -fsSL https://api.github.com/repos/ros-infrastructure/ros-apt-source/releases/latest \
     | awk -F'"' '/tag_name/ {print $4; exit}'
-]"
-)
+)"
 [[ -n "$ROS_APT_SOURCE_VERSION" ]] || fail "Could not determine the ros2-apt-source release version."
 
 ROS_APT_DEB="/tmp/ros2-apt-source.deb"
