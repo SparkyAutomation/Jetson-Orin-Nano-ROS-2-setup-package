@@ -142,7 +142,7 @@ sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \
   libopenblas-dev libjpeg-dev libpng-dev libavcodec-dev libavformat-dev \
   libswscale-dev libgtk-3-dev \
   ffmpeg v4l-utils usbutils can-utils net-tools \
-  htop tmux nano vim
+  htop tmux nano vim minicom
 
 git lfs install --skip-repo >/dev/null 2>&1 || true
 
