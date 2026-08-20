@@ -13,7 +13,7 @@ IFS=$'\n\t'
 
 ROS_DISTRO="jazzy"
 WORKSPACE="${HOME}/ros2_ws"
-VENV_DIR="${HOME}/.venvs/jetson-ros2"
+VENV_DIR="${HOME}/.venvs/ros2"
 INSTALL_NAV2=1
 INSTALL_SLAM=1
 SYSTEM_UPGRADE=0
