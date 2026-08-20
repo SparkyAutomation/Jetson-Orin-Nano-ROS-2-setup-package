@@ -51,7 +51,7 @@ Usage: ./install_jetson_ros2.sh [options]
 Options:
   --workspace PATH          ROS 2 workspace path (default: ~/ros2_ws)
   --venv PATH               Python virtual environment path
-                            (default: ~/.venvs/jetson-ros2)
+                            (default: ~/.venvs/ros2)
   --no-nav2                 Do not install Navigation2 packages
   --no-slam                 Do not install SLAM Toolbox
   --system-upgrade          Run apt full-upgrade before installing packages
