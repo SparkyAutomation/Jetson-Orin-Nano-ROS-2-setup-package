@@ -1,0 +1,4 @@
+# SparkyBot/Yahboom controller using QinHeng CH340/CH341 USB-UART.
+# NOTE: VID/PID 1a86:7523 is common. If multiple CH340 devices are used,
+# refine this rule with a serial number or physical USB path.
+SUBSYSTEM=="tty", ATTRS{idVendor}=="1a86", ATTRS{idProduct}=="7523", SYMLINK+="sparkybot", GROUP="dialout", MODE="0660"
